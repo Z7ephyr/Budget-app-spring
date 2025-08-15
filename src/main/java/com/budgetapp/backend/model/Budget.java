@@ -17,6 +17,10 @@ public class Budget {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // Add this new field to link the budget to a category
+    @Column(name = "category_id", nullable = false)
+    private Long categoryId;
+
     @Column(name = "month_start", columnDefinition = "DATE")
     private LocalDate monthStart;
 
@@ -32,6 +36,4 @@ public class Budget {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private User user;
-
-
 }

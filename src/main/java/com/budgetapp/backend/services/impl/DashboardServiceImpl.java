@@ -3,11 +3,11 @@ package com.budgetapp.backend.services.impl;
 import com.budgetapp.backend.dtos.budgets.BudgetOverviewDTO;
 import com.budgetapp.backend.dtos.expenses.TransactionDTO;
 import com.budgetapp.backend.model.Budget;
-import com.budgetapp.backend.model.User; // If needed for getting User reference
+import com.budgetapp.backend.model.User;
 import com.budgetapp.backend.repositories.BudgetRepository;
 import com.budgetapp.backend.repositories.ExpenseRepository;
-import com.budgetapp.backend.repositories.UserRepository; // Might need to fetch User entity for some queries
-import com.budgetapp.backend.mappers.ExpenseMapper; // To map Expenses to TransactionDTOs
+import com.budgetapp.backend.repositories.UserRepository;
+import com.budgetapp.backend.mappers.ExpenseMapper;
 import com.budgetapp.backend.services.DashboardService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
@@ -28,8 +28,8 @@ public class DashboardServiceImpl implements DashboardService {
 
     private final BudgetRepository budgetRepository;
     private final ExpenseRepository expenseRepository;
-    private final UserRepository userRepository; // To fetch User if needed for repository queries
-    private final ExpenseMapper expenseMapper; // To map recent transactions to DTO
+    private final UserRepository userRepository;
+    private final ExpenseMapper expenseMapper;
 
     public DashboardServiceImpl(BudgetRepository budgetRepository, ExpenseRepository expenseRepository, UserRepository userRepository, ExpenseMapper expenseMapper) {
         this.budgetRepository = budgetRepository;
@@ -49,10 +49,14 @@ public class DashboardServiceImpl implements DashboardService {
         LocalDate startDate = month.atDay(1);
         LocalDate endDate = month.atEndOfMonth();
 
-        // 1. Fetch Monthly Budget
-        // Assuming a user has one budget per month/YearMonth
-        Optional<Budget> monthlyBudgetOptional = budgetRepository.findByUserIdAndMonthStart(userId, startDate);
-        BigDecimal monthlyBudgetAmount = monthlyBudgetOptional.map(Budget::getAmount).orElse(BigDecimal.ZERO);
+        // 1. Fetch Monthly Budgets
+        // The repository method now returns a List.
+        List<Budget> monthlyBudgets = budgetRepository.findByUserIdAndMonthStart(userId, startDate);
+
+        // Sum the amounts of all budgets for the month. If the list is empty, the sum is zero.
+        BigDecimal monthlyBudgetAmount = monthlyBudgets.stream()
+                .map(Budget::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // 2. Calculate Total Spending for the Month
         BigDecimal totalSpending = expenseRepository.sumAmountByUserIdAndDateBetween(userId, startDate, endDate)
@@ -67,22 +71,14 @@ public class DashboardServiceImpl implements DashboardService {
                 ));
 
         // 4. Fetch Recent Transactions (e.g., top 5 or 10)
-        // You'll need a method like findTopNByUserIdOrderByDateDesc in ExpenseRepository for this.
-        // For simplicity, let's fetch a few most recent expenses from the current month
         List<TransactionDTO> recentTransactions = expenseRepository.findByUserIdAndDateBetweenOrderByDateDesc(userId, startDate, endDate)
                 .stream()
                 .limit(5) // Get top 5 recent transactions
                 .map(expenseMapper::toTransactionDto)
                 .collect(Collectors.toList());
 
-        // 5. Calculate Total Balance (This is more complex, usually involves incomes - expenses)
-        // For now, let's assume total balance is not directly managed as a single field
-        // and might be derived from a running sum of all transactions or an actual 'Account' entity.
-        // If you don't have an 'Income' entity yet, totalBalance calculation might be limited.
-        // Let's approximate it or leave it as a placeholder. For now, we'll make it 0 or derive from budget vs spending.
-        // If "total balance" implies current account balance, you'd need an 'Account' entity or a sum of all transactions.
-        // For this DTO, let's interpret 'totalBalance' as remaining budget or a conceptual balance relative to the budget.
-        BigDecimal totalBalance = monthlyBudgetAmount.subtract(totalSpending); // Simplified: Remaining budget
+        // 5. Calculate Total Balance (Simplified: Remaining budget)
+        BigDecimal totalBalance = monthlyBudgetAmount.subtract(totalSpending);
 
         // 6. Calculate Spending Percentage
         BigDecimal spendingPercentage = BigDecimal.ZERO;
@@ -91,9 +87,8 @@ public class DashboardServiceImpl implements DashboardService {
                     .multiply(new BigDecimal("100"));
         }
 
-
         return BudgetOverviewDTO.builder()
-                .totalBalance(totalBalance) // This interpretation needs clarification from you
+                .totalBalance(totalBalance)
                 .monthlyBudget(monthlyBudgetAmount)
                 .spendingByCategory(spendingByCategory)
                 .recentTransactions(recentTransactions)

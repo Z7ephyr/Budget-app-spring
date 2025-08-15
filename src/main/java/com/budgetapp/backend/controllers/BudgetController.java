@@ -1,6 +1,7 @@
 package com.budgetapp.backend.controllers;
 
 import com.budgetapp.backend.dtos.budgets.BudgetDTO;
+import com.budgetapp.backend.dtos.budgets.BudgetWithRecommendationDTO; // <-- NEW IMPORT
 import com.budgetapp.backend.config.UserDetailsImpl; // Import your custom UserDetailsImpl
 import com.budgetapp.backend.services.BudgetService;
 import jakarta.persistence.EntityNotFoundException;
@@ -73,13 +74,14 @@ public class BudgetController {
                 .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
-    // --- Get All Budgets for a User ---
+    // --- Get All Budgets for a User (Updated to include recommendations) ---
     // User ID is now securely extracted from the JWT
     @GetMapping
-    public ResponseEntity<List<BudgetDTO>> getAllBudgets(
-            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+    public ResponseEntity<List<BudgetWithRecommendationDTO>> getAllBudgets( // <-- UPDATED RETURN TYPE
+                                                                            @AuthenticationPrincipal UserDetailsImpl userDetails) {
         Long userId = userDetails.getId(); // Get user ID from authenticated principal
-        List<BudgetDTO> budgets = budgetService.getAllBudgetsByUserId(userId);
+        // The service now returns the new DTO
+        List<BudgetWithRecommendationDTO> budgets = budgetService.getAllBudgetsByUserId(userId);
         return new ResponseEntity<>(budgets, HttpStatus.OK);
     }
 

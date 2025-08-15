@@ -70,5 +70,16 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
      * @param userId The ID of the user who is expected to own the expense.
      * @return True if the expense exists and is owned by the user, false otherwise.
      */
-    boolean existsByIdAndUserId(Long id, Long userId); // <-- Added this method
+    boolean existsByIdAndUserId(Long id, Long userId);
+
+    /**
+     * Finds all expenses for a given user, category, and within a date range.
+     * This is the crucial new method required for AI budget recommendations.
+     * @param userId The ID of the user.
+     * @param category The name of the expense category.
+     * @param startDate The start date of the historical period.
+     * @param endDate The end date of the historical period.
+     * @return A list of Expenses matching the criteria.
+     */
+    List<Expense> findByUserIdAndCategoryAndDateBetween(Long userId, String category, LocalDate startDate, LocalDate endDate);
 }

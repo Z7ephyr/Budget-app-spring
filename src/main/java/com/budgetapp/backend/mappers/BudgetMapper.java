@@ -5,20 +5,22 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 
-
 @Mapper(componentModel = "spring")
 public interface BudgetMapper {
 
-    @Mapping(target = "userId", source = "user.id")
+    // Removed the mapping for userId
+    @Mapping(target = "categoryId", source = "categoryId")
     @Mapping(target = "aiRecommendation", ignore = true)
     @Mapping(target = "lastMonthComparison", ignore = true)
     BudgetDTO toDto(Budget entity);
 
+    @Mapping(target = "categoryId", source = "categoryId")
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     Budget toEntity(BudgetDTO dto);
 
+    @Mapping(target = "categoryId", source = "categoryId")
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "createdAt", ignore = true)

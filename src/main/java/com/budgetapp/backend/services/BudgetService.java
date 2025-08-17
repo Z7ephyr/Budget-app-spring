@@ -1,7 +1,7 @@
 package com.budgetapp.backend.services;
 
 import com.budgetapp.backend.dtos.budgets.BudgetDTO;
-import com.budgetapp.backend.dtos.budgets.BudgetWithRecommendationDTO; // Import the new DTO
+import com.budgetapp.backend.dtos.budgets.BudgetWithRecommendationDTO;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
@@ -35,7 +35,10 @@ public interface BudgetService {
 
     /**
      * Retrieves all budgets for a specific user.
-     * NOTE: This method now returns a list of the new DTO.
+     * Returns a list of BudgetWithRecommendationDTOs containing:
+     * - Existing budgets with their amounts
+     * - AI recommendations and last month's spending for all categories
+     * - For categories without a budget, amount is null but recommendations are still provided
      * @param userId The ID of the user.
      * @return A list of BudgetWithRecommendationDTOs for the user.
      */

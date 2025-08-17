@@ -5,12 +5,11 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
-import java.time.YearMonth;
 import java.time.LocalDate;
 
 /**
  * DTO to transfer budget data along with AI recommendation and last month's spending.
- * This is the object that will be sent to the frontend.
+ * Every budget category will have an AI recommendation and last month's comparison.
  */
 @Data
 @NoArgsConstructor
@@ -22,7 +21,12 @@ public class BudgetWithRecommendationDTO {
     private LocalDate monthStart;
     private BigDecimal amount;
 
-    // AI Recommendation fields
+    // AI Recommendation for the category
     private BigDecimal aiRecommendation;
+
+    // Comparison with last month's spending
     private BigDecimal lastMonthComparison;
+
+    // Optional recommendation text for frontend display
+    private String recommendationNote;
 }

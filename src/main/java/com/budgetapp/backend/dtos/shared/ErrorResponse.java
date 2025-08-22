@@ -9,10 +9,10 @@ import java.time.LocalDateTime;
 @Builder
 public class ErrorResponse {
     @NotBlank
-    private String error;       // e.g. "Validation Error"
+    private String error;
 
     @NotBlank
-    private String details;     // e.g. "Amount must be positive"
+    private String details;
 
     @Builder.Default
     private LocalDateTime timestamp = LocalDateTime.now();

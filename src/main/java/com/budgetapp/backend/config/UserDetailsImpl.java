@@ -37,9 +37,9 @@ public class UserDetailsImpl implements UserDetails {
      * @return A new UserDetailsImpl instance.
      */
     public static UserDetailsImpl build(User user) {
-        // We're assuming a single role for now. We can expand this later if needed.
+
         List<GrantedAuthority> authorities = Collections.singletonList(
-                // Use .name() to get the String representation of the enum.
+
                 new SimpleGrantedAuthority("ROLE_" + user.getRole().name().toUpperCase())
         );
 
@@ -51,7 +51,7 @@ public class UserDetailsImpl implements UserDetails {
         );
     }
 
-    // --- UserDetails Interface Methods ---
+
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -68,7 +68,7 @@ public class UserDetailsImpl implements UserDetails {
         return email;
     }
 
-    // Since our tokens are short-lived, we don't need to check these.
+
     @Override
     public boolean isAccountNonExpired() {
         return true;
@@ -89,7 +89,7 @@ public class UserDetailsImpl implements UserDetails {
         return true;
     }
 
-    // --- Custom Getters for our application ---
+
 
     public Long getId() {
         return id;

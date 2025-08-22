@@ -1,20 +1,28 @@
 package com.budgetapp.backend.services.impl;
 
+import com.budgetapp.backend.dtos.alerts.AlertDTO;
 import com.budgetapp.backend.dtos.expenses.CreateExpenseDTO;
 import com.budgetapp.backend.dtos.expenses.ExpenseDTO;
 import com.budgetapp.backend.dtos.expenses.TransactionDTO;
 import com.budgetapp.backend.mappers.ExpenseMapper;
+import com.budgetapp.backend.model.Budget;
+import com.budgetapp.backend.model.Category;
 import com.budgetapp.backend.model.Expense;
 import com.budgetapp.backend.model.User;
+import com.budgetapp.backend.repositories.BudgetRepository;
+import com.budgetapp.backend.repositories.CategoryRepository;
 import com.budgetapp.backend.repositories.ExpenseRepository;
 import com.budgetapp.backend.repositories.UserRepository;
+import com.budgetapp.backend.services.AlertService;
 import com.budgetapp.backend.services.ExpenseService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -25,48 +33,142 @@ public class ExpenseServiceImpl implements ExpenseService {
     private final ExpenseRepository expenseRepository;
     private final UserRepository userRepository;
     private final ExpenseMapper expenseMapper;
+    private final AlertService alertService;
+    private final BudgetRepository budgetRepository;
+    private final CategoryRepository categoryRepository;
 
-    public ExpenseServiceImpl(ExpenseRepository expenseRepository, UserRepository userRepository, ExpenseMapper expenseMapper) {
+    public ExpenseServiceImpl(
+            ExpenseRepository expenseRepository,
+            UserRepository userRepository,
+            ExpenseMapper expenseMapper,
+            AlertService alertService,
+            BudgetRepository budgetRepository,
+            CategoryRepository categoryRepository) {
         this.expenseRepository = expenseRepository;
         this.userRepository = userRepository;
         this.expenseMapper = expenseMapper;
+        this.alertService = alertService;
+        this.budgetRepository = budgetRepository;
+        this.categoryRepository = categoryRepository;
     }
 
     @Override
     @Transactional
     public ExpenseDTO createExpense(CreateExpenseDTO createExpenseDTO, Long userId) {
-        // 1. Fetch the User entity
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + userId));
+        Category category = categoryRepository.findById(createExpenseDTO.getCategoryId())
+                .orElseThrow(() -> new EntityNotFoundException("Category not found with ID: " + createExpenseDTO.getCategoryId()));
 
-        // 2. Map DTO to entity
         Expense expense = expenseMapper.toEntity(createExpenseDTO);
 
-        // 3. Set the User entity on the Expense
         expense.setUser(user);
+        expense.setCategory(category);
 
-        // Handle scanReceipt field from CreateExpenseDTO if applicable (e.g., integrate with a file storage service)
-        // For now, this logic is omitted as it depends on your file handling strategy.
-        // If 'scanReceipt' is just a boolean, it's mapped. If it's a file, it's a separate process.
-
-        // 4. Save and map back to ExpenseDTO for response
         Expense savedExpense = expenseRepository.save(expense);
+
+        checkBudgetAndCreateAlert(savedExpense);
+
         return expenseMapper.toDto(savedExpense);
+    }
+
+    private void checkBudgetAndCreateAlert(Expense newExpense) {
+        YearMonth currentMonth = YearMonth.from(newExpense.getDate());
+        Long categoryId = newExpense.getCategory().getId();
+        Optional<Budget> budgetOptional = budgetRepository.findByUserIdAndMonthStartAndCategoryId(
+                newExpense.getUser().getId(),
+                currentMonth.atDay(1),
+                categoryId
+        );
+
+        if (budgetOptional.isPresent()) {
+            Budget budget = budgetOptional.get();
+            BigDecimal totalSpending = expenseRepository.sumAmountByUserIdAndCategoryIdAndDateBetween(
+                    newExpense.getUser().getId(),
+                    categoryId,
+                    currentMonth.atDay(1),
+                    currentMonth.atEndOfMonth()
+            );
+
+            if (totalSpending != null && totalSpending.compareTo(budget.getAmount()) > 0) {
+                AlertDTO alertDTO = AlertDTO.builder()
+                        .type("budgetoverrun")
+                        .message("You have exceeded your '" + budget.getCategory().getName() + "' budget of $" + budget.getAmount() + ". Your total spending is now $" + totalSpending + ".")
+                        .build();
+                alertService.createAlert(alertDTO, newExpense.getUser().getId());
+            }
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ExpenseDTO> findExpensesByFilters(Long userId, String search, String category, String date, String amountRange) {
+        LocalDate startDate = null;
+        LocalDate endDate = null;
+        BigDecimal minAmount = null;
+        BigDecimal maxAmount = null;
+
+        if (date != null && !date.isEmpty()) {
+            LocalDate filterDate = LocalDate.parse(date);
+            startDate = filterDate.withDayOfMonth(1);
+            endDate = filterDate.withDayOfMonth(filterDate.lengthOfMonth());
+        }
+
+        if (amountRange != null && !amountRange.isEmpty()) {
+            switch (amountRange) {
+                case "under50":
+                    maxAmount = new BigDecimal(49.99);
+                    break;
+                case "50to100":
+                    minAmount = new BigDecimal(50.00);
+                    maxAmount = new BigDecimal(100.00);
+                    break;
+                case "over100":
+                    minAmount = new BigDecimal(100.01);
+                    break;
+            }
+        }
+
+        List<Object[]> results = expenseRepository.findExpensesByFilters(userId, search, category, startDate, endDate, minAmount, maxAmount);
+
+        List<ExpenseDTO> dtoList = new ArrayList<>();
+        for (Object[] row : results) {
+            ExpenseDTO dto =  new ExpenseDTO();
+
+
+            dto.setId(((Number) row[0]).longValue());
+            dto.setAmount((BigDecimal) row[1]);
+
+
+            java.sql.Date sqlDate = (java.sql.Date) row[2];
+            if (sqlDate != null) {
+                dto.setDate(sqlDate.toLocalDate());
+            } else {
+                dto.setDate(null);
+            }
+
+            dto.setDescription((String) row[3]);
+            dto.setUserId(((Number) row[4]).longValue());
+            dto.setCategoryId(((Number) row[6]).longValue());
+            dto.setCategoryName((String) row[7]);
+            dto.setCategoryDescription((String) row[8]);
+
+            dtoList.add(dto);
+        }
+
+        return dtoList;
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<ExpenseDTO> getExpenseById(Long expenseId, Long userId) {
-        // Ensure the findByIdAndUserId method exists in your ExpenseRepository
-        // If not, you might need to add: Optional<Expense> findByIdAndUserId(Long id, Long userId);
-        return expenseRepository.findByIdAndUserId(expenseId, userId) // Changed to findByIdAndUserId for security
+        return expenseRepository.findByIdAndUserId(expenseId, userId)
                 .map(expenseMapper::toDto);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ExpenseDTO> getAllExpensesByUserId(Long userId) {
-        // Ensure @EntityGraph(attributePaths = "user") is on findByUserId in ExpenseRepository
         List<Expense> expenses = expenseRepository.findByUserId(userId);
         return expenses.stream()
                 .map(expenseMapper::toDto)
@@ -78,7 +180,6 @@ public class ExpenseServiceImpl implements ExpenseService {
     public List<TransactionDTO> getTransactionsByUserIdAndMonth(Long userId, YearMonth month) {
         LocalDate startDate = month.atDay(1);
         LocalDate endDate = month.atEndOfMonth();
-        // Use the repository method we refined earlier
         List<Expense> expenses = expenseRepository.findByUserIdAndDateBetweenOrderByDateDesc(userId, startDate, endDate);
         return expenses.stream()
                 .map(expenseMapper::toTransactionDto)
@@ -88,20 +189,9 @@ public class ExpenseServiceImpl implements ExpenseService {
     @Override
     @Transactional
     public ExpenseDTO updateExpense(Long expenseId, ExpenseDTO updatedExpenseDTO, Long userId) {
-        // Ensure the findByIdAndUserId method exists in your ExpenseRepository
-        Expense existingExpense = expenseRepository.findByIdAndUserId(expenseId, userId) // Changed to findByIdAndUserId for security
+        Expense existingExpense = expenseRepository.findByIdAndUserId(expenseId, userId)
                 .orElseThrow(() -> new EntityNotFoundException("Expense not found or not owned by user with ID: " + expenseId));
-
-        // No explicit security check needed here as findByIdAndUserId already filters by user.
-        // If you want to throw a more specific SecurityException, you could keep the filter.
-        // if (!existingExpense.getUser().getId().equals(userId)) {
-        //     throw new SecurityException("Access Denied: Expense does not belong to user ID: " + userId);
-        // }
-
-        // Map updated fields from DTO to existing entity
         expenseMapper.updateEntityFromDto(updatedExpenseDTO, existingExpense);
-
-        // Save and map back to DTO
         Expense savedExpense = expenseRepository.save(existingExpense);
         return expenseMapper.toDto(savedExpense);
     }
@@ -109,12 +199,9 @@ public class ExpenseServiceImpl implements ExpenseService {
     @Override
     @Transactional
     public void deleteExpense(Long expenseId, Long userId) {
-        // Ensure the existsByIdAndUserId method exists in your ExpenseRepository
-        // If not, you might need to add: boolean existsByIdAndUserId(Long id, Long userId);
-        if (!expenseRepository.existsByIdAndUserId(expenseId, userId)) { // Changed to existsByIdAndUserId for security
+        if (!expenseRepository.existsByIdAndUserId(expenseId, userId)) {
             throw new EntityNotFoundException("Expense not found or not owned by user with ID: " + expenseId);
         }
-
         expenseRepository.deleteById(expenseId);
     }
 }

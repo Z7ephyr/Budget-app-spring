@@ -27,20 +27,20 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
             HttpServletResponse response,
             AccessDeniedException accessDeniedException) throws IOException, ServletException {
 
-        // Set the response status to 403 Forbidden
+
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
 
-        // Set the response content type to JSON
+
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
-        // Create a JSON response body
+
         Map<String, Object> body = new HashMap<>();
         body.put("status", HttpServletResponse.SC_FORBIDDEN);
         body.put("error", "Forbidden");
         body.put("message", "You do not have the required permissions to access this resource.");
         body.put("path", request.getServletPath());
 
-        // Write the JSON body to the response output stream
+
         new ObjectMapper().writeValue(response.getOutputStream(), body);
     }
 }

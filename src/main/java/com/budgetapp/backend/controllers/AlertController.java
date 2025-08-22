@@ -25,9 +25,9 @@ public class AlertController {
     @PostMapping
     public ResponseEntity<?> createAlert(
             @Valid @RequestBody AlertDTO alertDTO,
-            @AuthenticationPrincipal UserDetailsImpl userDetails) { // Get user details from the JWT
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
         try {
-            Long userId = userDetails.getId(); // Securely get the user's ID
+            Long userId = userDetails.getId();
             AlertDTO createdAlert = alertService.createAlert(alertDTO, userId);
             return new ResponseEntity<>(createdAlert, HttpStatus.CREATED);
         } catch (EntityNotFoundException e) {
@@ -37,55 +37,55 @@ public class AlertController {
         }
     }
 
-    // --- Get All Alerts for a User ---
+
     @GetMapping
     public ResponseEntity<List<AlertDTO>> getAllAlerts(
-            @AuthenticationPrincipal UserDetailsImpl userDetails) { // Get user details from the JWT
-        Long userId = userDetails.getId(); // Securely get the user's ID
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        Long userId = userDetails.getId();
         List<AlertDTO> alerts = alertService.getAlertsByUserId(userId);
         return new ResponseEntity<>(alerts, HttpStatus.OK);
     }
 
-    // --- Get Unread Alerts for a User ---
+
     @GetMapping("/unread")
     public ResponseEntity<List<AlertDTO>> getUnreadAlerts(
-            @AuthenticationPrincipal UserDetailsImpl userDetails) { // Get user details from the JWT
-        Long userId = userDetails.getId(); // Securely get the user's ID
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        Long userId = userDetails.getId();
         List<AlertDTO> unreadAlerts = alertService.getUnreadAlertsByUserId(userId);
         return new ResponseEntity<>(unreadAlerts, HttpStatus.OK);
     }
 
-    // --- Mark Alert as Read ---
+
     @PutMapping("/{id}/read")
     public ResponseEntity<?> markAlertAsRead(
             @PathVariable("id") Long alertId,
-            @AuthenticationPrincipal UserDetailsImpl userDetails) { // Get user details from the JWT
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
         try {
-            Long userId = userDetails.getId(); // Securely get the user's ID
+            Long userId = userDetails.getId();
             AlertDTO updatedAlert = alertService.markAlertAsRead(alertId, userId);
             return new ResponseEntity<>(updatedAlert, HttpStatus.OK);
         } catch (EntityNotFoundException e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND); // 404 Not Found
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.NOT_FOUND);
         } catch (SecurityException e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.FORBIDDEN); // 403 Forbidden (if alert not owned by user)
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.FORBIDDEN);
         } catch (Exception e) {
             return new ResponseEntity<>("Error marking alert as read: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
-    // --- Delete Alert ---
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteAlert(
             @PathVariable("id") Long alertId,
-            @AuthenticationPrincipal UserDetailsImpl userDetails) { // Get user details from the JWT
+            @AuthenticationPrincipal UserDetailsImpl userDetails) {
         try {
-            Long userId = userDetails.getId(); // Securely get the user's ID
+            Long userId = userDetails.getId();
             alertService.deleteAlert(alertId, userId);
-            return new ResponseEntity<>(HttpStatus.NO_CONTENT); // 204 No Content
+            return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         } catch (EntityNotFoundException e) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND); // 404 Not Found
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         } catch (SecurityException e) {
-            return new ResponseEntity<>(HttpStatus.FORBIDDEN); // 403 Forbidden
+            return new ResponseEntity<>(HttpStatus.FORBIDDEN);
         } catch (Exception e) {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }

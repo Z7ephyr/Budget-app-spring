@@ -1,37 +1,31 @@
 package com.budgetapp.backend.mappers;
 
 import com.budgetapp.backend.dtos.budgets.BudgetDTO;
-import com.budgetapp.backend.dtos.budgets.BudgetWithRecommendationDTO;
+import com.budgetapp.backend.dtos.budgets.CreateBudgetDTO;
 import com.budgetapp.backend.model.Budget;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
+import org.mapstruct.ReportingPolicy;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface BudgetMapper {
 
-    // ---------- Budget <-> BudgetDTO ----------
-    @Mapping(target = "categoryId", source = "categoryId")
-    @Mapping(target = "aiRecommendation", ignore = true)
-    @Mapping(target = "lastMonthComparison", ignore = true)
+
+    @Mapping(target = "categoryId", source = "category.id")
     BudgetDTO toDto(Budget entity);
 
-    @Mapping(target = "categoryId", source = "categoryId")
+
+    @Mapping(target = "category.id", source = "categoryId")
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
-    Budget toEntity(BudgetDTO dto);
+    Budget toEntity(CreateBudgetDTO dto);
 
-    @Mapping(target = "categoryId", source = "categoryId")
+
+    @Mapping(target = "category.id", source = "categoryId")
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "user", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
-    void updateEntityFromDto(BudgetDTO dto, @MappingTarget Budget budget);
-
-    // ---------- Budget -> BudgetWithRecommendationDTO ----------
-    @Mapping(target = "categoryId", source = "categoryId")
-    @Mapping(target = "aiRecommendation", ignore = true)
-    @Mapping(target = "lastMonthComparison", ignore = true)
-    @Mapping(target = "recommendationNote", ignore = true) // only here for BudgetWithRecommendationDTO
-    BudgetWithRecommendationDTO toRecommendationDto(Budget entity);
+    void updateEntityFromDto(CreateBudgetDTO dto, @MappingTarget Budget budget);
 }

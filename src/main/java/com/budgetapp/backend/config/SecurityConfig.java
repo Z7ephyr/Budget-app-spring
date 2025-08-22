@@ -3,6 +3,7 @@ package com.budgetapp.backend.config;
 import com.budgetapp.backend.filters.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod; // Import HttpMethod
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -32,32 +33,37 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Disable CSRF for stateless APIs
+
                 .csrf(AbstractHttpConfigurer::disable)
 
-                // Add CorsFilter at the beginning of the chain
-                .cors(cors -> {}) // Enable CORS by default (from the CorsFilter bean)
 
-                // Define authorization rules
+                .cors(cors -> {})
+
+
                 .authorizeHttpRequests(authorize -> authorize
-                        // Allow public access to the authentication API paths
+
                         .requestMatchers("/api/auth/**").permitAll()
-                        // Allow access to all Swagger paths
+
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                        // Restrict admin paths to users with 'admin' authority
-                        .requestMatchers("/api/admin/**").hasAuthority("admin")
+
+                        .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+
+
+                        .requestMatchers(HttpMethod.PUT, "/api/users/me").authenticated()
+
+
                         .anyRequest().authenticated()
                 )
 
-                // Configure session management to be stateless
+
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
 
-                // Add the JWT filter before the standard authentication filter
+
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 
-                // Configure exception handling for access denied errors
+
                 .exceptionHandling(exceptions -> exceptions
                         .accessDeniedHandler(accessDeniedHandler)
                 );
@@ -65,13 +71,12 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // This bean explicitly configures and registers the CorsFilter
+
     @Bean
     public CorsFilter corsFilter() {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        // This is a permissive configuration. In production, you'd restrict this.
         config.addAllowedOriginPattern("*");
         config.addAllowedHeader("*");
         config.addAllowedMethod("*");

@@ -1,7 +1,7 @@
 package com.budgetapp.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDate;
@@ -14,20 +14,19 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@JsonIgnoreProperties({"category"})
 public class Expense {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(precision = 10, scale = 2)
+    @Column(precision = 10, scale = 2, nullable = false)
     private BigDecimal amount;
 
-    @Column(nullable = false, length = 50)
-    @NotBlank(message = "Category is required")
-    @Size(max = 50, message = "Category must be ≤50 characters")
-    private String category;
-    @Column
+    @Column(columnDefinition = "TEXT")
     private String description;
+
     @Column(nullable = false)
     @Builder.Default
     private LocalDate date = LocalDate.now();
@@ -35,6 +34,11 @@ public class Expense {
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id", nullable = false)
+    private Category category;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)

@@ -1,5 +1,4 @@
 package com.budgetapp.backend.services.impl;
-
 import com.budgetapp.backend.dtos.budgets.BudgetOverviewDTO;
 import com.budgetapp.backend.dtos.expenses.TransactionDTO;
 import com.budgetapp.backend.model.Budget;
@@ -17,10 +16,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,28 +38,30 @@ public class DashboardServiceImpl implements DashboardService {
     @Override
     @Transactional(readOnly = true)
     public BudgetOverviewDTO getDashboardOverview(Long userId, YearMonth month) {
-        // Ensure the user exists (good practice for security/data integrity)
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + userId));
 
-        // Define start and end dates for the month
+
         LocalDate startDate = month.atDay(1);
         LocalDate endDate = month.atEndOfMonth();
 
-        // 1. Fetch Monthly Budgets
-        // The repository method now returns a List.
+
         List<Budget> monthlyBudgets = budgetRepository.findByUserIdAndMonthStart(userId, startDate);
 
-        // Sum the amounts of all budgets for the month. If the list is empty, the sum is zero.
+
         BigDecimal monthlyBudgetAmount = monthlyBudgets.stream()
                 .map(Budget::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // 2. Calculate Total Spending for the Month
-        BigDecimal totalSpending = expenseRepository.sumAmountByUserIdAndDateBetween(userId, startDate, endDate)
-                .orElse(BigDecimal.ZERO);
 
-        // 3. Calculate Spending by Category for the Month
+        BigDecimal totalSpending = expenseRepository.sumAmountByUserIdAndDateBetween(userId, startDate, endDate);
+
+        if (totalSpending == null) {
+            totalSpending = BigDecimal.ZERO;
+        }
+
+
         Map<String, BigDecimal> spendingByCategory = expenseRepository.sumAmountByCategoryByUserIdAndDateBetween(userId, startDate, endDate)
                 .stream()
                 .collect(Collectors.toMap(
@@ -70,17 +69,17 @@ public class DashboardServiceImpl implements DashboardService {
                         obj -> (BigDecimal) obj[1] // Summed amount
                 ));
 
-        // 4. Fetch Recent Transactions (e.g., top 5 or 10)
+
         List<TransactionDTO> recentTransactions = expenseRepository.findByUserIdAndDateBetweenOrderByDateDesc(userId, startDate, endDate)
                 .stream()
                 .limit(5) // Get top 5 recent transactions
                 .map(expenseMapper::toTransactionDto)
                 .collect(Collectors.toList());
 
-        // 5. Calculate Total Balance (Simplified: Remaining budget)
+
         BigDecimal totalBalance = monthlyBudgetAmount.subtract(totalSpending);
 
-        // 6. Calculate Spending Percentage
+
         BigDecimal spendingPercentage = BigDecimal.ZERO;
         if (monthlyBudgetAmount.compareTo(BigDecimal.ZERO) > 0) {
             spendingPercentage = totalSpending.divide(monthlyBudgetAmount, 2, RoundingMode.HALF_UP)

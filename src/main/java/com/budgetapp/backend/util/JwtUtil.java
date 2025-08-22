@@ -33,16 +33,13 @@ public class JwtUtil {
     @Value("${jwt.expiration}")
     private long expiration;
 
-    // --- JWT Signing Key ---
-    // The return type is now 'Key' as it is a more general interface for the key.
+
     private Key getSigningKey() {
-        // Decode the base64 secret string to bytes.
         byte[] keyBytes = Decoders.BASE64.decode(this.secret);
-        // Use the explicit SecretKeySpec to ensure full compatibility with JJWT v0.10.8.
         return new SecretKeySpec(keyBytes, SignatureAlgorithm.HS256.getJcaName());
     }
 
-    // --- JWT Generation Methods ---
+
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
         return createToken(claims, userDetails.getUsername());

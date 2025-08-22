@@ -1,7 +1,7 @@
 package com.budgetapp.backend.services.impl;
 
 import com.budgetapp.backend.dtos.budgets.BudgetDTO;
-import com.budgetapp.backend.dtos.budgets.BudgetWithRecommendationDTO;
+import com.budgetapp.backend.dtos.budgets.CreateBudgetDTO; // Use the new DTO for input
 import com.budgetapp.backend.mappers.BudgetMapper;
 import com.budgetapp.backend.model.Budget;
 import com.budgetapp.backend.model.User;
@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class BudgetServiceImpl implements BudgetService {
@@ -36,19 +37,19 @@ public class BudgetServiceImpl implements BudgetService {
 
     @Override
     @Transactional
-    public BudgetDTO createBudget(BudgetDTO budgetDTO, Long userId) {
+    public BudgetDTO createBudget(CreateBudgetDTO createBudgetDTO, Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + userId));
 
-        LocalDate monthStart = budgetDTO.getMonthStart() != null ? YearMonth.from(budgetDTO.getMonthStart()).atDay(1)
+        LocalDate monthStart = createBudgetDTO.getMonthStart() != null ? YearMonth.from(createBudgetDTO.getMonthStart()).atDay(1)
                 : YearMonth.now().atDay(1);
-        budgetDTO.setMonthStart(monthStart);
+        createBudgetDTO.setMonthStart(monthStart);
 
-        if (budgetRepository.findByUserIdAndMonthStartAndCategoryId(userId, monthStart, budgetDTO.getCategoryId()).isPresent()) {
-            throw new IllegalArgumentException("A budget already exists for this user, month, and category: " + budgetDTO.getCategoryId());
+        if (budgetRepository.findByUserIdAndMonthStartAndCategoryId(userId, monthStart, createBudgetDTO.getCategoryId()).isPresent()) {
+            throw new IllegalArgumentException("A budget already exists for this user, month, and category: " + createBudgetDTO.getCategoryId());
         }
 
-        Budget budget = budgetMapper.toEntity(budgetDTO);
+        Budget budget = budgetMapper.toEntity(createBudgetDTO);
         budget.setUser(user);
         return budgetMapper.toDto(budgetRepository.save(budget));
     }
@@ -69,21 +70,18 @@ public class BudgetServiceImpl implements BudgetService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<BudgetWithRecommendationDTO> getAllBudgetsByUserId(Long userId) {
+    public List<BudgetDTO> getAllBudgetsByUserId(Long userId) {
         LocalDate monthStart = LocalDate.now().withDayOfMonth(1);
 
-        // Fetch all existing budgets for the user
-        List<Budget> userBudgets = budgetRepository.findByUserIdAndMonthStart(userId, monthStart);
-        Map<Long, Budget> budgetMap = new HashMap<>();
-        for (Budget b : userBudgets) {
-            budgetMap.put(b.getCategoryId(), b);
-        }
 
-        // Get AI recommendations for all categories
+        List<Budget> userBudgets = budgetRepository.findByUserIdAndMonthStart(userId, monthStart);
+        Map<Long, Budget> budgetMap = userBudgets.stream()
+                .collect(Collectors.toMap(budget -> budget.getCategory().getId(), budget -> budget));
+
+
         Map<Long, Map<String, BigDecimal>> recommendations = recommendationService.calculateBudgetRecommendations(userId);
 
-        // List all categories (1-12)
-        List<BudgetWithRecommendationDTO> combinedBudgets = new ArrayList<>();
+        List<BudgetDTO> combinedBudgets = new ArrayList<>();
         for (long categoryId = 1; categoryId <= 12; categoryId++) {
             Budget existingBudget = budgetMap.get(categoryId);
             Map<String, BigDecimal> recData = recommendations.getOrDefault(categoryId, Map.of(
@@ -94,7 +92,8 @@ public class BudgetServiceImpl implements BudgetService {
             BigDecimal aiRecommendation = recData.get("aiRecommendation");
             BigDecimal lastMonthComparison = recData.get("lastMonthComparison");
 
-            BudgetWithRecommendationDTO dto = BudgetWithRecommendationDTO.builder()
+
+            BudgetDTO dto = BudgetDTO.builder()
                     .id(existingBudget != null ? existingBudget.getId() : null)
                     .categoryId(categoryId)
                     .monthStart(existingBudget != null ? existingBudget.getMonthStart() : monthStart)
@@ -111,7 +110,7 @@ public class BudgetServiceImpl implements BudgetService {
 
     @Override
     @Transactional
-    public BudgetDTO updateBudget(Long budgetId, BudgetDTO updatedBudgetDTO, Long userId) {
+    public BudgetDTO updateBudget(Long budgetId, CreateBudgetDTO updatedBudgetDTO, Long userId) {
         Budget existingBudget = budgetRepository.findByIdAndUserId(budgetId, userId)
                 .orElseThrow(() -> new EntityNotFoundException("Budget not found or not owned by user with ID: " + budgetId));
 
@@ -119,12 +118,13 @@ public class BudgetServiceImpl implements BudgetService {
                 !existingBudget.getMonthStart().equals(YearMonth.from(updatedBudgetDTO.getMonthStart()).atDay(1))) {
             throw new IllegalArgumentException("Cannot change budget month during update. Create a new budget for a different month.");
         }
+
         if (updatedBudgetDTO.getCategoryId() != null &&
-                !existingBudget.getCategoryId().equals(updatedBudgetDTO.getCategoryId())) {
+                !existingBudget.getCategory().getId().equals(updatedBudgetDTO.getCategoryId())) {
             throw new IllegalArgumentException("Cannot change budget category during update. Create a new budget for a different category.");
         }
 
-        budgetMapper.updateEntityFromDto(updatedBudgetDTO, existingBudget);
+        budgetMapper.updateEntityFromDto(updatedBudgetDTO, existingBudget); // Use the new DTO for mapping
         return budgetMapper.toDto(budgetRepository.save(existingBudget));
     }
 

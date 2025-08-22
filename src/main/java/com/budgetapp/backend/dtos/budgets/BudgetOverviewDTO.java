@@ -11,9 +11,22 @@ import java.util.Map;
 @Data
 @Builder
 public class BudgetOverviewDTO {
-    private BigDecimal totalBalance;
+
+
     private BigDecimal monthlyBudget;
-    private Map<String, BigDecimal> spendingByCategory;
-    private List<TransactionDTO> recentTransactions;
+
+
+    private BigDecimal totalSpending;
+
+
+    private BigDecimal totalBalance;
+
+
     private BigDecimal spendingPercentage;
+
+
+    private Map<String, BigDecimal> spendingByCategory;
+
+
+    private List<TransactionDTO> recentTransactions;
 }

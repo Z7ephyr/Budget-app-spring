@@ -3,8 +3,6 @@ package com.budgetapp.backend.services;
 import com.budgetapp.backend.dtos.expenses.CreateExpenseDTO;
 import com.budgetapp.backend.dtos.expenses.ExpenseDTO;
 import com.budgetapp.backend.dtos.expenses.TransactionDTO;
-
-import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
@@ -28,9 +26,21 @@ public interface ExpenseService {
     Optional<ExpenseDTO> getExpenseById(Long expenseId, Long userId);
 
     /**
-     * Retrieves all expenses for a specific user.
+     * Retrieves a list of expenses for a user based on various search and filter criteria.
+     * This is designed to power the 'Transactions' screen.
      * @param userId The ID of the user.
-     * @return A list of ExpenseDTOs for the user.
+     * @param search A string to search for in expense descriptions (optional).
+     * @param category The category name to filter by (optional).
+     * @param date The date string to filter by (optional).
+     * @param amountRange The amount range filter (e.g., "under50", "50to100", "over100") (optional).
+     * @return A list of filtered ExpenseDTOs for the user.
+     */
+    List<ExpenseDTO> findExpensesByFilters(Long userId, String search, String category, String date, String amountRange);
+
+    /**
+     * Retrieves a list of all expenses for a user.
+     * @param userId The ID of the user.
+     * @return A list of ExpenseDTOs.
      */
     List<ExpenseDTO> getAllExpensesByUserId(Long userId);
 

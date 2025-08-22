@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-public class AlertServiceImpl implements AlertService { // 'implements AlertService' should now be valid
+public class AlertServiceImpl implements AlertService {
 
     private final AlertRepository alertRepository;
     private final AlertMapper alertMapper;
@@ -27,7 +27,7 @@ public class AlertServiceImpl implements AlertService { // 'implements AlertServ
         this.userRepository = userRepository;
     }
 
-    @Override // Add @Override as it's an interface method implementation
+    @Override
     @Transactional
     public AlertDTO createAlert(AlertDTO alertDTO, Long userId) {
         User user = userRepository.findById(userId)
@@ -35,7 +35,7 @@ public class AlertServiceImpl implements AlertService { // 'implements AlertServ
 
         Alert alert = alertMapper.toEntity(alertDTO);
         alert.setUser(user);
-        alert.setRead(false); // New alerts are typically unread by default
+        alert.setRead(false);
 
         Alert savedAlert = alertRepository.save(alert);
         return alertMapper.toDto(savedAlert);
@@ -44,7 +44,6 @@ public class AlertServiceImpl implements AlertService { // 'implements AlertServ
     @Override
     @Transactional(readOnly = true)
     public List<AlertDTO> getAlertsByUserId(Long userId) {
-        // You might want to sort these, e.g., by createdAt descending
         List<Alert> alerts = alertRepository.findByUserIdOrderByCreatedAtDesc(userId);
         return alerts.stream()
                 .map(alertMapper::toDto)
@@ -66,12 +65,12 @@ public class AlertServiceImpl implements AlertService { // 'implements AlertServ
         Alert alert = alertRepository.findById(alertId)
                 .orElseThrow(() -> new EntityNotFoundException("Alert not found with ID: " + alertId));
 
-        // Security check: ensure the alert belongs to the requesting user
+
         if (!alert.getUser().getId().equals(userId)) {
             throw new SecurityException("Access Denied: Alert does not belong to user ID: " + userId);
         }
 
-        alert.setRead(true); // Mark as read
+        alert.setRead(true);
         Alert updatedAlert = alertRepository.save(alert);
         return alertMapper.toDto(updatedAlert);
     }
@@ -82,7 +81,6 @@ public class AlertServiceImpl implements AlertService { // 'implements AlertServ
         Alert alertToDelete = alertRepository.findById(alertId)
                 .orElseThrow(() -> new EntityNotFoundException("Alert not found with ID: " + alertId));
 
-        // Security check: ensure the alert belongs to the requesting user
         if (!alertToDelete.getUser().getId().equals(userId)) {
             throw new SecurityException("Access Denied: Alert does not belong to user ID: " + userId);
         }

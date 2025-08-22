@@ -11,7 +11,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional; 
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/expenses")
@@ -24,16 +24,25 @@ public class ExpenseController {
     }
 
     /**
-     * Retrieves all expenses for the authenticated user.
+     * **UPDATED**: Retrieves all expenses for the authenticated user with optional filtering.
      * The user ID is extracted securely from the authentication principal.
+     * The filters are optional and correspond to the frontend UI.
      * @param userDetails The authenticated user's details.
-     * @return A ResponseEntity containing a list of ExpenseDTOs.
+     * @param search A string to search for in expense descriptions.
+     * @param category The category name to filter by.
+     * @param date The date string to filter by.
+     * @param amountRange The amount range filter (e.g., "under50").
+     * @return A ResponseEntity containing a list of filtered ExpenseDTOs.
      */
     @GetMapping
-    public ResponseEntity<List<ExpenseDTO>> getAllExpensesByUserId( // Changed return type to List<ExpenseDTO>
-                                                                    @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        Long userId = userDetails.getId(); // Get the ID from our custom UserDetails object
-        List<ExpenseDTO> expenses = expenseService.getAllExpensesByUserId(userId); // Changed service method call
+    public ResponseEntity<List<ExpenseDTO>> getAllExpensesWithFilters(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @RequestParam(value = "search", required = false) String search,
+            @RequestParam(value = "category", required = false) String category,
+            @RequestParam(value = "date", required = false) String date,
+            @RequestParam(value = "amountRange", required = false) String amountRange) {
+        Long userId = userDetails.getId();
+        List<ExpenseDTO> expenses = expenseService.findExpensesByFilters(userId, search, category, date, amountRange);
         return ResponseEntity.ok(expenses);
     }
 
@@ -44,11 +53,11 @@ public class ExpenseController {
      * @return A ResponseEntity containing the created ExpenseDTO and HttpStatus.CREATED.
      */
     @PostMapping
-    public ResponseEntity<ExpenseDTO> createExpense( // Changed return type to ExpenseDTO
-                                                     @AuthenticationPrincipal UserDetailsImpl userDetails,
-                                                     @Valid @RequestBody CreateExpenseDTO createExpenseDTO) { // Changed request body to CreateExpenseDTO
+    public ResponseEntity<ExpenseDTO> createExpense(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @Valid @RequestBody CreateExpenseDTO createExpenseDTO) {
         Long userId = userDetails.getId();
-        ExpenseDTO addedExpense = expenseService.createExpense(createExpenseDTO, userId); // Changed service method call
+        ExpenseDTO addedExpense = expenseService.createExpense(createExpenseDTO, userId);
         return new ResponseEntity<>(addedExpense, HttpStatus.CREATED);
     }
 
@@ -60,12 +69,12 @@ public class ExpenseController {
      * @return A ResponseEntity containing the updated ExpenseDTO.
      */
     @PutMapping("/{id}")
-    public ResponseEntity<ExpenseDTO> updateExpense( // Changed return type to ExpenseDTO
-                                                     @AuthenticationPrincipal UserDetailsImpl userDetails,
-                                                     @PathVariable("id") Long expenseId,
-                                                     @Valid @RequestBody ExpenseDTO expenseDTO) { // Changed request body to ExpenseDTO
+    public ResponseEntity<ExpenseDTO> updateExpense(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @PathVariable("id") Long expenseId,
+            @Valid @RequestBody ExpenseDTO expenseDTO) {
         Long userId = userDetails.getId();
-        ExpenseDTO updatedExpense = expenseService.updateExpense(expenseId, expenseDTO, userId); // Changed service method call
+        ExpenseDTO updatedExpense = expenseService.updateExpense(expenseId, expenseDTO, userId);
         return ResponseEntity.ok(updatedExpense);
     }
 
@@ -91,11 +100,11 @@ public class ExpenseController {
      * @return A ResponseEntity containing the ExpenseDTO.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ExpenseDTO> getExpenseById( // Changed return type to ExpenseDTO
-                                                      @AuthenticationPrincipal UserDetailsImpl userDetails,
-                                                      @PathVariable("id") Long expenseId) {
+    public ResponseEntity<ExpenseDTO> getExpenseById(
+            @AuthenticationPrincipal UserDetailsImpl userDetails,
+            @PathVariable("id") Long expenseId) {
         Long userId = userDetails.getId();
-        Optional<ExpenseDTO> expense = expenseService.getExpenseById(expenseId, userId); // Changed service method call
+        Optional<ExpenseDTO> expense = expenseService.getExpenseById(expenseId, userId);
         return expense.map(ResponseEntity::ok)
                 .orElseGet(() -> new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }

@@ -1,8 +1,9 @@
-package com.budgetapp.backend.dtos.expenses;
+package com.budgetapp.backend.dtos.budgets;
 
-import jakarta.validation.constraints.NotBlank;
+
+
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
 import lombok.Builder;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -10,17 +11,14 @@ import java.time.LocalDate;
 
 @Data
 @Builder
-public class CreateExpenseDTO {
-
-
+public class CreateBudgetDTO {
     @NotNull(message = "Category ID is required")
     private Long categoryId;
 
-    @Positive(message = "Amount must be positive")
     @NotNull(message = "Amount is required")
+    @DecimalMin(value = "0.01", message = "Amount must be greater than 0")
     private BigDecimal amount;
 
-    private LocalDate date;
-    private String description;
-    private boolean scanReceipt;
+    @NotNull(message = "Month start date is required")
+    private LocalDate monthStart;
 }

@@ -16,7 +16,7 @@ public class AuthResponse {
         this.user = user;
     }
 
-    // Getters and setters (or use Lombok @Data)
+
     public String getToken() {
         return token;
     }

@@ -3,6 +3,7 @@ package com.budgetapp.backend.services.impl;
 import com.budgetapp.backend.dtos.users.UserDTO;
 import com.budgetapp.backend.dtos.users.UserLoginDTO;
 import com.budgetapp.backend.dtos.users.UserRegistrationDTO;
+import com.budgetapp.backend.dtos.users.UserUpdateDTO;
 import com.budgetapp.backend.mappers.UserMapper;
 import com.budgetapp.backend.model.Role;
 import com.budgetapp.backend.model.User;
@@ -67,11 +68,32 @@ public class UserServiceImpl implements UserService {
         return userMapper.toDto(user);
     }
 
-    // New method to resolve the error in AuthController
     @Override
     @Transactional(readOnly = true)
     public Optional<UserDTO> getAuthenticatedUserDTO(Long userId) {
         return userRepository.findById(userId)
-                .map(userMapper::toDto); // Use the existing mapper to convert the entity to a DTO
+                .map(userMapper::toDto);
+    }
+
+    /**
+     * Updates an existing user's profile information.
+     * This method is new and handles the profile update logic.
+     * @param userId The ID of the user to update.
+     * @param updateDTO The DTO containing the fields to update.
+     * @return The updated UserDTO.
+     * @throws EntityNotFoundException if the user is not found.
+     */
+    @Override
+    @Transactional
+    public UserDTO updateUser(Long userId, UserUpdateDTO updateDTO) {
+
+        User existingUser = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
+
+
+        userMapper.updateFromUpdateDto(updateDTO, existingUser);
+
+        User updatedUser = userRepository.save(existingUser);
+        return userMapper.toDto(updatedUser);
     }
 }
